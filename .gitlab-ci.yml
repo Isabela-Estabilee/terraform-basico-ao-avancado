@@ -1,0 +1,53 @@
+image: node:latest # indica a imagem que sera utilizada durante a execucao de todos os jobs
+
+workflow: # funciona como o only, porem e global
+  rules:
+    - if: $CI_COMMIT_BRANCH != "main" # se o commit nao for na main, o teste nao iniciara
+      when: never
+    - when: always
+
+stages: # stages = ordem que os  jobs serao executados
+  - teste
+  - build
+  - deploy
+
+executar_teste: 
+  stage: teste
+  before_script: 
+  - script: "Preparando testes..."
+  - chmod +x ./script.sh ## da  permissao de execucao para um arquivo linux
+  script: # para facilitar a execucao de scripts muito longos podemos criar um arquivo shell
+  - ./script.sh
+
+executar_teste_2:
+  image: node:19.1 # indica que uma imagem especifica sera usada em um job. Pode ter repeticao
+  stage: teste 
+  script:
+    - echo "Executando teste 2..."
+
+  after_script: 
+    echo "Apagando arquivos temporarios..."
+
+criar_imagens:
+  only: # o comando only deternina que um job so sera executado na branch main
+  - main 
+  stage: build
+  script:
+    - echo "Criando as imagens..."
+
+push_imagens:
+  only:
+    - main
+  needs: # dependencias = determina que um job so pode se iniciar se outro estiver funcionando
+         # tambem ajuda na organizacao do codigo, evitando a criacao de varios pequenos jobs
+    - criar_imagens
+  stage: build
+  script:
+    - echo "Realizando upload das imagens..."
+  
+kubernetes:
+  only:
+    - main
+  stage: deploy
+  script:
+    - echo "Executando deploy..."
